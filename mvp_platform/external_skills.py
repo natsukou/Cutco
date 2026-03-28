@@ -2,7 +2,7 @@
 
 包含：
 - 本地脚本执行（probe、visual_review）
-- VectCut API 视频编辑能力（vectcut_skill 模块）
+- FFmpeg 本地视频编辑能力（ffmpeg_skill 模块）
 """
 from __future__ import annotations
 
@@ -12,35 +12,27 @@ from pathlib import Path
 
 from . import config
 
-# 导出 VectCut 技能函数
-from .vectcut_skill import (  # noqa: F401
-    # 草稿管理
-    create_draft,
+# 导出 FFmpeg 本地技能函数
+from .ffmpeg_skill import (  # noqa: F401
+    # 工具检查
+    check_ffmpeg,
+    check_edge_tts,
+    check_whisper,
+    get_tool_status,
     # 视频处理
-    split_video,
+    trim_video,
     extract_audio,
-    get_duration,
-    # 素材编排
-    add_video,
-    add_audio,
-    add_text,
-    add_image,
-    # AI 能力
+    merge_videos,
+    # TTS 语音合成
     generate_speech,
-    generate_ai_video,
-    check_ai_video_status,
-    wait_for_ai_video,
-    # ASR 字幕
-    asr_llm,
-    asr_basic,
-    asr_nlp,
-    create_subtitles_from_video,
-    # 渲染
-    render_draft,
-    check_render_status,
-    wait_for_render,
+    # ASR 字幕生成
+    generate_subtitles,
+    # 视频合成
+    add_audio_to_video,
+    add_subtitles_to_video,
     # 便捷工作流
     create_voiceover_video,
+    create_subtitled_video,
 )
 
 

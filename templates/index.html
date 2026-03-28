@@ -227,9 +227,9 @@
                                 
                                 <div class="mt-auto pt-4 border-t border-gray-100 space-y-2">
                                     {% if selected.status in ['approved_for_demo', 'demo_uploaded', 'qa_done'] %}
-                                    <!-- VectCut AI 视频处理 -->
-                                    <button onclick="document.getElementById('vectcut-process-modal').classList.remove('hidden')" class="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
-                                        <i class="fas fa-magic"></i> AI 视频处理
+                                    <!-- FFmpeg 本地视频处理 -->
+                                    <button onclick="document.getElementById('ffmpeg-process-modal').classList.remove('hidden')" class="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                        <i class="fas fa-magic"></i> AI 视频处理 (本地)
                                     </button>
                                     <button onclick="document.getElementById('upload-demo-modal').classList.remove('hidden')" class="w-full bg-pink-50 hover:bg-pink-100 border border-pink-200 text-pink-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
                                         <i class="fas fa-upload"></i> 上传 Demo 资产
@@ -409,25 +409,25 @@
     </div>
     {% endif %}
 
-    <!-- VectCut AI Video Processing Modal -->
+    <!-- FFmpeg AI Video Processing Modal -->
     {% if selected %}
-    <div id="vectcut-process-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity">
+    <div id="ffmpeg-process-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all">
             <div class="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur z-10">
                 <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-magic text-pink-500"></i> AI 视频处理 (VectCut)
+                    <i class="fas fa-magic text-pink-500"></i> AI 视频处理 (FFmpeg 本地)
                 </h3>
-                <button onclick="document.getElementById('vectcut-process-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition-colors bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+                <button onclick="document.getElementById('ffmpeg-process-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition-colors bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-8">
-                <form action="{{ url_for('vectcut_process', project_id=selected.id) }}" method="post" class="space-y-6">
-                    
+                <form action="{{ url_for('ffmpeg_process', project_id=selected.id) }}" method="post" enctype="multipart/form-data" class="space-y-6">
+
                     <!-- 处理类型选择 -->
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-3">处理类型 <span class="text-red-500">*</span></label>
                         <div class="grid grid-cols-2 gap-3">
                             <label class="cursor-pointer">
-                                <input type="radio" name="process_type" value="split" class="peer sr-only" checked>
+                                <input type="radio" name="process_type" value="trim" class="peer sr-only" checked>
                                 <div class="p-4 rounded-lg border-2 border-gray-200 peer-checked:border-pink-500 peer-checked:bg-pink-50 transition-all">
                                     <div class="flex items-center gap-2 mb-1">
                                         <i class="fas fa-cut text-pink-500"></i>
@@ -443,7 +443,7 @@
                                         <i class="fas fa-closed-captioning text-pink-500"></i>
                                         <span class="font-medium text-gray-800">生成字幕</span>
                                     </div>
-                                    <p class="text-xs text-gray-500">AI 语音识别自动加字幕</p>
+                                    <p class="text-xs text-gray-500">Whisper AI 语音识别</p>
                                 </div>
                             </label>
                             <label class="cursor-pointer">
@@ -453,7 +453,7 @@
                                         <i class="fas fa-microphone text-pink-500"></i>
                                         <span class="font-medium text-gray-800">AI 配音</span>
                                     </div>
-                                    <p class="text-xs text-gray-500">文本转语音并合成</p>
+                                    <p class="text-xs text-gray-500">Edge-TTS 文本转语音</p>
                                 </div>
                             </label>
                             <label class="cursor-pointer">
@@ -469,22 +469,38 @@
                         </div>
                     </div>
 
-                    <!-- 视频 URL 输入 -->
+                    <!-- 视频文件上传 -->
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">源视频 URL <span class="text-red-500">*</span></label>
-                        <input type="url" name="video_url" required class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow" placeholder="https://example.com/video.mp4">
-                        <p class="text-xs text-gray-500 mt-1">支持 MP4 格式，视频需可公开访问</p>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">上传视频文件 <span class="text-red-500">*</span></label>
+                        <input type="file" name="video_file" accept="video/mp4,video/*" required class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-100 file:text-pink-700 cursor-pointer hover:file:bg-pink-200 transition-colors">
+                        <p class="text-xs text-gray-500 mt-1">支持 MP4 格式，文件将保存到项目目录</p>
                     </div>
 
                     <!-- 裁剪参数（条件显示） -->
-                    <div id="split-params" class="grid grid-cols-2 gap-4">
+                    <div id="trim-params" class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">开始时间（秒）</label>
-                            <input type="number" name="start_time" value="0" min="0" step="0.1" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">开始时间</label>
+                            <input type="text" name="start_time" value="0" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow" placeholder="0 或 00:00:10">
+                            <p class="text-xs text-gray-400 mt-1">秒数或 HH:MM:SS</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">结束时间（秒）</label>
-                            <input type="number" name="end_time" value="10" min="0" step="0.1" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">结束时间</label>
+                            <input type="text" name="end_time" value="10" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow" placeholder="10 或 00:00:30">
+                            <p class="text-xs text-gray-400 mt-1">秒数或 HH:MM:SS</p>
+                        </div>
+                    </div>
+
+                    <!-- 字幕参数（条件显示） -->
+                    <div id="subtitles-params" class="hidden">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Whisper 模型</label>
+                            <select name="whisper_model" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow">
+                                <option value="tiny">tiny - 最快，精度较低</option>
+                                <option value="base" selected>base - 快速，精度中等</option>
+                                <option value="small">small - 中等速度，精度较高</option>
+                                <option value="medium">medium - 较慢，精度很高</option>
+                                <option value="large">large - 最慢，精度最高</option>
+                            </select>
                         </div>
                     </div>
 
@@ -496,16 +512,16 @@
                         </div>
                         <div class="mt-3">
                             <label class="block text-sm font-bold text-gray-700 mb-2">音色选择</label>
-                            <select name="voice_id" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow">
-                                <option value="">默认音色</option>
-                                <option value="female_tianmei">甜美女声</option>
-                                <option value="male_narrator">旁白男声</option>
+                            <select name="voice" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow">
+                                <option value="zh-CN-XiaoxiaoNeural" selected>小晓（女）</option>
+                                <option value="zh-CN-YunxiNeural">云希（男）</option>
+                                <option value="zh-CN-XiaoyiNeural">小艺（女）</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="pt-6 flex justify-end gap-3 border-t border-gray-100">
-                        <button type="button" onclick="document.getElementById('vectcut-process-modal').classList.add('hidden')" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2.5 px-6 rounded-lg shadow-sm transition-colors">取消</button>
+                        <button type="button" onclick="document.getElementById('ffmpeg-process-modal').classList.add('hidden')" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2.5 px-6 rounded-lg shadow-sm transition-colors">取消</button>
                         <button type="submit" class="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-medium py-2.5 px-8 rounded-lg shadow-md transition-colors">
                             <i class="fas fa-play mr-2"></i>开始处理
                         </button>
@@ -520,18 +536,22 @@
         // 处理类型切换显示对应参数
         document.querySelectorAll('input[name="process_type"]').forEach(radio => {
             radio.addEventListener('change', function() {
-                const splitParams = document.getElementById('split-params');
+                const trimParams = document.getElementById('trim-params');
+                const subtitlesParams = document.getElementById('subtitles-params');
                 const voiceoverParams = document.getElementById('voiceover-params');
-                
-                if (this.value === 'split') {
-                    splitParams.classList.remove('hidden');
-                    voiceoverParams.classList.add('hidden');
+
+                // 隐藏所有参数
+                trimParams.classList.add('hidden');
+                subtitlesParams.classList.add('hidden');
+                voiceoverParams.classList.add('hidden');
+
+                // 显示对应参数
+                if (this.value === 'trim') {
+                    trimParams.classList.remove('hidden');
+                } else if (this.value === 'subtitles') {
+                    subtitlesParams.classList.remove('hidden');
                 } else if (this.value === 'voiceover') {
-                    splitParams.classList.add('hidden');
                     voiceoverParams.classList.remove('hidden');
-                } else {
-                    splitParams.classList.add('hidden');
-                    voiceoverParams.classList.add('hidden');
                 }
             });
         });
