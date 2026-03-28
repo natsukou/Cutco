@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - Pipeline View</title>
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .stage-card { transition: all 0.3s ease; }
+        .stage-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .bg-running { background-color: #FEF3C7; border-color: #F59E0B; } /* amber-100, border amber-500 */
+        .text-running { color: #D97706; } /* amber-600 */
+        .badge-running { background-color: #FEF3C7; color: #D97706; }
+        .bg-done { background-color: #D1FAE5; border-color: #10B981; } /* emerald-100, border emerald-500 */
+        .text-done { color: #059669; } /* emerald-600 */
+        .badge-done { background-color: #D1FAE5; color: #059669; }
+        .bg-pending { background-color: #F3F4F6; border-color: #D1D5DB; } /* gray-100, border gray-300 */
+        .text-pending { color: #6B7280; } /* gray-500 */
+        .badge-pending { background-color: #F3F4F6; color: #6B7280; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col h-full overflow-y-auto z-10 shadow-sm flex-shrink-0">
+        <div class="p-6 border-b border-gray-200">
+            <h1 class="text-xl font-bold font-mono tracking-tight text-indigo-600 flex items-center gap-2">
+                <i class="fas fa-video"></i> {{ app_name }}
+            </h1>
+            <button onclick="document.getElementById('new-project-modal').classList.remove('hidden')" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow transition-colors flex justify-center items-center gap-2">
+                <i class="fas fa-plus"></i> 新建项目
+            </button>
+        </div>
+        
+        <div class="p-4 flex-1">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">历史项目</h2>
+            <ul class="space-y-1">
+                {% for proj in projects %}
+                <li>
+                    <a href="{{ url_for('index', project=proj.id) }}" 
+                       class="block px-3 py-2 rounded-md text-sm font-medium truncate transition-colors {% if selected and selected.id == proj.id %}bg-indigo-50 text-indigo-700{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                        <i class="fas fa-folder-open text-gray-400 mr-2 {% if selected and selected.id == proj.id %}text-indigo-400{% endif %}"></i> {{ proj.title }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        {% if knowledge_files %}
+        <div class="p-4 border-t border-gray-200">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">全局知识库</h2>
+            <ul class="space-y-1">
+                {% for k in knowledge_files %}
+                <li>
+                    <a href="{{ url_for('knowledge', filename=k.name) }}" target="_blank" class="block px-3 py-1.5 rounded-md text-sm text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition-colors truncate">
+                        <i class="far fa-file-alt text-gray-400 mr-2"></i> {{ k.name }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 h-full overflow-y-auto flex flex-col bg-gray-50/50">
+        {% if selected %}
+        
+        <header class="bg-white border-b border-gray-200 px-8 py-6 shadow-sm z-0">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">{{ selected.title }}</h2>
+                    <p class="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                        <span>项目ID:</span>
+                        <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs">{{ selected.id }}</span>
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wide border border-indigo-200 shadow-sm">
+                        <i class="fas fa-circle text-[8px] mr-1.5 {% if selected.status == 'qa_done' %}text-emerald-500{% else %}text-indigo-500 animate-pulse{% endif %}"></i>
+                        {{ selected.status }}
+                    </span>
+                </div>
+            </div>
+            
+            {% if selected.intake %}
+            <div class="mt-5 flex flex-wrap gap-2">
+                {% for key, val in selected.intake.items() %}
+                    {% if val %}
+                    <div class="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-gray-50 text-gray-600 border border-gray-200 max-w-sm group relative" title="{{ val }}">
+                        <strong class="mr-1.5 text-gray-500 font-medium whitespace-nowrap">{{ key|replace('_', ' ')|title }}:</strong> 
+                        <span class="truncate">{{ val }}</span>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </header>
+
+        <div class="p-8 flex-1">
+            <div class="max-w-7xl mx-auto">
+                
+                <h3 class="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-stream text-indigo-500"></i> 处理流水线
+                </h3>
+                
+                <!-- Pipeline Visualizer -->
+                <div class="relative">
+                    <!-- Connecting backgrounds logic could go here, but cards are cleaner -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+                        
+                        <!-- INTAKE STAGE -->
+                        {% set st = pipeline.get('intake', {}) %}
+                        {% set sc = st.status | status_class %}
+                        {% set sc_col = sc if sc else 'pending' %}
+                        <div class="stage-card bg-white rounded-xl shadow-sm flex flex-col h-[400px] border border-gray-200 overflow-hidden relative">
+                            <div class="h-1.5 w-full bg-blue-500"></div>
+                            <div class="p-4 border-b border-gray-100 bg-gray-50/80 flex justify-between items-center">
+                                <h4 class="font-bold text-gray-800 flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded bg-blue-100 flex items-center justify-center text-blue-600 text-xs">1</div>
+                                    需求阶段
+                                </h4>
+                                <span class="text-[10px] font-bold badge-{{ sc_col }} px-2 py-1 rounded uppercase tracking-wider">{{ st.status|default('pending') }}</span>
+                            </div>
+                            <div class="p-5 flex-1 flex flex-col overflow-y-auto">
+                                <h5 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">交付物 / 资产</h5>
+                                <ul class="space-y-2 mb-4 text-sm flex-1">
+                                    {% for art in st.artifacts %}
+                                    <li>
+                                        <a href="{{ url_for('artifact', project_id=selected.id, relative_path=art.relative_path) }}" target="_blank" class="group flex items-start gap-2 text-gray-700 hover:text-blue-600 transition-colors">
+                                            <i class="far fa-file-alt mt-1 text-gray-400 group-hover:text-blue-500"></i>
+                                            <span class="break-all line-clamp-2">{{ art.name }}</span>
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="text-gray-400 italic text-xs flex items-center justify-center h-20 border-2 border-dashed border-gray-100 rounded-lg">暂无文件</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- CRITERIA STAGE -->
+                        {% set st = pipeline.get('criteria', {}) %}
+                        {% set sc = st.status | status_class %}
+                        {% set sc_col = sc if sc else 'pending' %}
+                        <div class="stage-card bg-white rounded-xl shadow-sm flex flex-col h-[400px] border border-gray-200 overflow-hidden relative">
+                            <div class="h-1.5 w-full bg-purple-500"></div>
+                            <div class="p-4 border-b border-gray-100 bg-gray-50/80 flex justify-between items-center">
+                                <h4 class="font-bold text-gray-800 flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded bg-purple-100 flex items-center justify-center text-purple-600 text-xs">2</div>
+                                    验收标准
+                                </h4>
+                                <span class="text-[10px] font-bold badge-{{ sc_col }} px-2 py-1 rounded uppercase tracking-wider">{{ st.status|default('pending') }}</span>
+                            </div>
+                            <div class="p-5 flex-1 flex flex-col overflow-y-auto">
+                                <h5 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">交付物 / 资产</h5>
+                                <ul class="space-y-2 mb-4 text-sm flex-1">
+                                    {% for art in st.artifacts %}
+                                    <li>
+                                        <a href="{{ url_for('artifact', project_id=selected.id, relative_path=art.relative_path) }}" target="_blank" class="group flex items-start gap-2 text-gray-700 hover:text-purple-600 transition-colors">
+                                            <i class="far fa-file-alt mt-1 text-gray-400 group-hover:text-purple-500"></i>
+                                            <span class="break-all line-clamp-2">{{ art.name }}</span>
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="text-gray-400 italic text-xs flex items-center justify-center h-20 border-2 border-dashed border-gray-100 rounded-lg">暂无文件</li>
+                                    {% endfor %}
+                                </ul>
+                                
+                                <div class="mt-auto pt-4 border-t border-gray-100">
+                                    {% if selected.status == 'intake' %}
+                                    <form action="{{ url_for('run_criteria', project_id=selected.id) }}" method="post">
+                                        <button class="w-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                            <i class="fas fa-magic"></i> 解析并生成标准
+                                        </button>
+                                    </form>
+                                    {% elif selected.status == 'criteria_ready' %}
+                                    <form action="{{ url_for('confirm_criteria', project_id=selected.id) }}" method="post">
+                                        <button class="w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                            <i class="fas fa-check"></i> 客户已确认
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PRODUCTION STAGE -->
+                        {% set st = pipeline.get('production', {}) %}
+                        {% set sc = st.status | status_class %}
+                        {% set sc_col = sc if sc else 'pending' %}
+                        <div class="stage-card bg-white rounded-xl shadow-sm flex flex-col h-[400px] border border-gray-200 overflow-hidden relative">
+                            <div class="h-1.5 w-full bg-pink-500"></div>
+                            <div class="p-4 border-b border-gray-100 bg-gray-50/80 flex justify-between items-center">
+                                <h4 class="font-bold text-gray-800 flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded bg-pink-100 flex items-center justify-center text-pink-600 text-xs">3</div>
+                                    样片交付
+                                </h4>
+                                <span class="text-[10px] font-bold badge-{{ sc_col }} px-2 py-1 rounded uppercase tracking-wider">{{ st.status|default('pending') }}</span>
+                            </div>
+                            <div class="p-5 flex-1 flex flex-col overflow-y-auto">
+                                <h5 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">交付物 / 资产</h5>
+                                <ul class="space-y-2 mb-4 text-sm flex-1">
+                                    {% for art in st.artifacts %}
+                                    <li>
+                                        <a href="{{ url_for('artifact', project_id=selected.id, relative_path=art.relative_path) }}" target="_blank" class="group flex items-start gap-2 text-gray-700 hover:text-pink-600 transition-colors">
+                                            {% if 'mp4' in art.name.lower() or 'mov' in art.name.lower() %}
+                                                <i class="fas fa-video mt-1 text-gray-400 group-hover:text-pink-500"></i>
+                                            {% else %}
+                                                <i class="far fa-file-alt mt-1 text-gray-400 group-hover:text-pink-500"></i>
+                                            {% endif %}
+                                            <span class="break-all line-clamp-2">{{ art.name }}</span>
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="text-gray-400 italic text-xs flex items-center justify-center h-20 border-2 border-dashed border-gray-100 rounded-lg">暂无文件</li>
+                                    {% endfor %}
+                                </ul>
+                                
+                                <div class="mt-auto pt-4 border-t border-gray-100">
+                                    {% if selected.status in ['approved_for_demo', 'demo_uploaded', 'qa_done'] %}
+                                    <button onclick="document.getElementById('upload-demo-modal').classList.remove('hidden')" class="w-full bg-pink-50 hover:bg-pink-100 border border-pink-200 text-pink-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                        <i class="fas fa-upload"></i> 上传 Demo 资产
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- QA STAGE -->
+                        {% set st = pipeline.get('qa', {}) %}
+                        {% set sc = st.status | status_class %}
+                        {% set sc_col = sc if sc else 'pending' %}
+                        <div class="stage-card bg-white rounded-xl shadow-sm flex flex-col h-[400px] border border-gray-200 overflow-hidden relative">
+                            <div class="h-1.5 w-full bg-orange-500"></div>
+                            <div class="p-4 border-b border-gray-100 bg-gray-50/80 flex justify-between items-center">
+                                <h4 class="font-bold text-gray-800 flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded bg-orange-100 flex items-center justify-center text-orange-600 text-xs">4</div>
+                                    AI 质检
+                                </h4>
+                                <span class="text-[10px] font-bold badge-{{ sc_col }} px-2 py-1 rounded uppercase tracking-wider">{{ st.status|default('pending') }}</span>
+                            </div>
+                            <div class="p-5 flex-1 flex flex-col overflow-y-auto">
+                                <h5 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">交付物 / 资产</h5>
+                                <ul class="space-y-2 mb-4 text-sm flex-1">
+                                    {% for art in st.artifacts %}
+                                    <li>
+                                        <a href="{{ url_for('artifact', project_id=selected.id, relative_path=art.relative_path) }}" target="_blank" class="group flex items-start gap-2 text-gray-700 hover:text-orange-600 transition-colors">
+                                            <i class="far fa-file-alt mt-1 text-gray-400 group-hover:text-orange-500"></i>
+                                            <span class="break-all line-clamp-2">{{ art.name }}</span>
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="text-gray-400 italic text-xs flex items-center justify-center h-20 border-2 border-dashed border-gray-100 rounded-lg">暂无文件</li>
+                                    {% endfor %}
+                                </ul>
+                                
+                                <div class="mt-auto pt-4 border-t border-gray-100">
+                                    {% if selected.status in ['demo_uploaded', 'qa_done'] %}
+                                    <form action="{{ url_for('run_qa', project_id=selected.id) }}" method="post">
+                                        <button class="w-full bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                            <i class="fas fa-robot"></i> 运行视频质检
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- History Log -->
+                <div class="mt-12 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-5 border-b border-gray-100 bg-gray-50/80">
+                        <h3 class="text-md font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-history text-gray-400"></i> 项目操作历史
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+                            {% for entry in selected.history|reverse %}
+                            <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-100 text-indigo-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                                    <div class="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                                </div>
+                                <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-lg border border-gray-100 shadow-sm transition-shadow hover:shadow-md">
+                                    <div class="flex items-center justify-between space-x-2 mb-1">
+                                        <div class="font-bold text-gray-700 text-sm uppercase tracking-wide">{{ entry.status }}</div>
+                                        <time class="font-mono text-xs text-gray-400">{{ entry.at[:16]|replace('T', ' ') }}</time>
+                                    </div>
+                                    <div class="text-sm text-gray-500">{{ entry.note }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- Empty State -->
+        <div class="m-auto text-center flex flex-col items-center justify-center p-8 max-w-lg">
+            <div class="w-28 h-28 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center mb-6 relative">
+                <div class="absolute inset-0 rounded-full bg-indigo-50 animate-ping opacity-20"></div>
+                <i class="fas fa-project-diagram text-5xl text-indigo-400"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-3 tracking-tight">智能视频流转管线</h2>
+            <p class="text-gray-500 mb-10 leading-relaxed text-lg">规范化管理内容出海需求与交付标准。点击下方按钮开始您的第一个多语言视频翻译项目。</p>
+            <button onclick="document.getElementById('new-project-modal').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-8 rounded-lg shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5 flex justify-center items-center gap-3 text-lg">
+                <i class="fas fa-plus"></i> 新建项目
+            </button>
+        </div>
+        {% endif %}
+    </main>
+
+    <!-- Modals -->
+    <!-- New Project Modal -->
+    <div id="new-project-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur z-10">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-folder-plus text-indigo-500"></i> 新建翻译项目
+                </h3>
+                <button onclick="document.getElementById('new-project-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition-colors bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-8">
+                <form action="{{ url_for('create_project') }}" method="post" enctype="multipart/form-data" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">项目标题 <span class="text-red-500">*</span></label>
+                        <input type="text" name="title" required class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow" placeholder="例如：某汽车品牌出海宣传片">
+                    </div>
+                    
+                    <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100/50">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">源视频上传 (可选)</label>
+                        <input type="file" name="source_video" accept="video/mp4" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 cursor-pointer hover:file:bg-indigo-200 transition-colors">
+                        <p class="text-xs text-indigo-400 mt-2 flex items-center gap-1"><i class="fas fa-info-circle"></i> 支持 MP4 格式。文件较大时可创建后通过网盘补传。</p>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-bold text-gray-700">需求描述文本</label>
+                            <button type="button" onclick="insertGuideChips()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-3 rounded-full transition-colors font-medium flex items-center gap-1">
+                                <i class="fas fa-tags"></i> 插入规范模板
+                            </button>
+                        </div>
+                        <textarea id="request_text" name="request_text" rows="8" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow font-mono text-sm leading-relaxed" placeholder="输入客户需求描述...可以点击右上角使用推荐模板补充关键信息"></textarea>
+                    </div>
+
+                    <div class="pt-6 flex justify-end gap-3 border-t border-gray-100">
+                        <button type="button" onclick="document.getElementById('new-project-modal').classList.add('hidden')" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2.5 px-6 rounded-lg shadow-sm transition-colors">取消</button>
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-8 rounded-lg shadow-md transition-colors">创建项目</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Demo Modal -->
+    {% if selected %}
+    <div id="upload-demo-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-white/95 rounded-t-2xl">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-cloud-upload-alt text-pink-500"></i> 上传交付样片
+                </h3>
+                <button onclick="document.getElementById('upload-demo-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition-colors bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-8">
+                <form action="{{ url_for('upload_production', project_id=selected.id) }}" method="post" enctype="multipart/form-data" class="space-y-5">
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Demo 视频文件</label>
+                            <input type="file" name="demo_video" accept="video/mp4" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300 cursor-pointer transition-colors">
+                        </div>
+                        
+                        <div class="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">双语字幕文件 (可选)</label>
+                            <input type="file" name="demo_srt" accept=".srt" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300 cursor-pointer transition-colors">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">制作记录 / 修改说明</label>
+                        <textarea name="production_notes" rows="3" class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-shadow text-sm" placeholder="例如：已经按照验收标准调整了背景音量，优化了关键帧..."></textarea>
+                    </div>
+                    
+                    <div class="pt-6 flex justify-end gap-3 mt-6 border-t border-gray-100">
+                        <button type="button" onclick="document.getElementById('upload-demo-modal').classList.add('hidden')" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2.5 px-6 rounded-lg shadow-sm transition-colors">取消</button>
+                        <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white font-medium py-2.5 px-8 rounded-lg shadow-md transition-colors hover:-translate-y-0.5">提交投喂质检</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        function insertGuideChips() {
+            const textarea = document.getElementById('request_text');
+            const chips = `
+📺 目标平台：
+🌍 交付语言：
+🎯 验收标准：
+🎨 风格目标：
+⛔ 明确禁忌：
+👥 目标受众：
+🧪 本轮 demo 要证明：
+⏰ 时间要求：
+🔗 参考链接：
+`;
+            if (!textarea.value.includes('📺 目标平台：')) {
+                textarea.value = chips.trim() + '\n\n' + textarea.value;
+                // Highlight or focus
+                textarea.focus();
+            }
+        }
+    </script>
+</body>
+</html>

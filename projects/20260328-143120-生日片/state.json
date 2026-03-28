@@ -1,0 +1,43 @@
+{
+  "id": "20260328-143120-生日片",
+  "title": "生日片",
+  "request_text": "",
+  "intake": {
+    "task_type": "",
+    "target_platform": "",
+    "delivery_languages": "",
+    "audience": "",
+    "style_goals": "",
+    "avoid_list": "",
+    "demo_goal": "",
+    "acceptance_focus": "",
+    "references": "",
+    "deadline": ""
+  },
+  "status": "intake",
+  "created_at": "2026-03-28T14:31:20",
+  "updated_at": "2026-03-28T14:31:29",
+  "task_type": "full",
+  "platform": "unknown",
+  "verdict": null,
+  "files": {
+    "source_video": "/Users/nakia/Downloads/video-agent-mvp/projects/20260328-143120-生日片/intake/L1000854.MP4"
+  },
+  "notes": [],
+  "history": [
+    {
+      "at": "2026-03-28T14:31:20",
+      "status": "intake",
+      "note": "Project created"
+    },
+    {
+      "at": "2026-03-28T14:31:29",
+      "status": "intake",
+      "note": "Criteria agent failed: Error: Input must be provided either through stdin or as a prompt argument when using --print"
+    }
+  ],
+  "runtime": {
+    "claude": "error",
+    "gemini": "pending"
+  }
+}
