@@ -1,0 +1,58 @@
+{
+  "name": "video-editor",
+  "description": "Simplified video editing and processing workflow using VectCut API",
+  "version": "1.0.0",
+  "author": "蒜蓉粉丝儿",
+  "emoji": "🎬",
+  "requires": {
+    "env": ["VECTCUT_API_KEY"],
+    "tools": ["curl", "python3"]
+  },
+  "capabilities": [
+    "视频裁剪",
+    "视频切分",
+    "音频提取",
+    "字幕生成 (ASR)",
+    "语音合成 (TTS)",
+    "AI 视频生成",
+    "素材混剪",
+    "特效转场",
+    "云渲染",
+    "关键帧动画"
+  ],
+  "endpoints": {
+    "create_draft": "POST /cut_jianying/create_draft",
+    "split_video": "POST /process/split_video",
+    "extract_audio": "POST /process/extract_audio",
+    "generate_speech": "POST /cut_jianying/generate_speech",
+    "generate_ai_video": "POST /cut_jianying/generate_ai_video",
+    "check_ai_video": "POST /cut_jianying/aivideo/task_status",
+    "render": "POST /cut_jianying/generate_video",
+    "check_render": "POST /cut_jianying/task_status",
+    "asr_basic": "POST /cut_jianying/asr_basic",
+    "asr_nlp": "POST /cut_jianying/asr_nlp",
+    "asr_llm": "POST /cut_jianying/asr_llm"
+  },
+  "scripts": [
+    "create_draft.sh - 创建草稿",
+    "split_video.sh - 切分视频",
+    "extract_audio.sh - 提取音频",
+    "generate_speech.sh - 生成语音",
+    "generate_ai_video.sh - 生成 AI 视频",
+    "check_ai_video.sh - 查询 AI 视频状态",
+    "render.sh - 发起渲染",
+    "check_render.sh - 查询渲染进度"
+  ],
+  "example_usage": {
+    "视频裁剪": "split_video.sh --video_url 'https://...' --start 10 --end 30",
+    "生成配音": "generate_speech.sh --text '你好' --provider minimax --model speech-01",
+    "AI 视频": "generate_ai_video.sh --prompt '一只猫' --model runway --resolution 1080P",
+    "渲染输出": "render.sh --draft_id xxx --resolution 1080P"
+  },
+  "notes": [
+    "所有脚本需要 VECTCUT_API_KEY 环境变量",
+    "建议配合 cli-progress 显示进度条",
+    "1080P 视频渲染通常需要 2-5 分钟",
+    "单个视频建议不超过 500MB"
+  ]
+}
