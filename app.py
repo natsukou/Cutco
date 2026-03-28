@@ -144,6 +144,77 @@ def upload_production(project_id: str):
     return redirect(url_for("index", project=project_id))
 
 
+@app.post("/projects/<project_id>/vectcut-process")
+def vectcut_process(project_id: str):
+    """使用 VectCut API 处理视频。"""
+    from mvp_platform import external_skills
+
+    process_type = request.form.get("process_type", "split")
+    video_url = request.form.get("video_url", "").strip()
+
+    if not video_url:
+        return redirect(url_for("index", project=project_id))
+
+    state = store.load_state(project_id)
+    result_data = {"process_type": process_type, "video_url": video_url, "at": store.now_iso()}
+
+    try:
+        if process_type == "split":
+            start_time = float(request.form.get("start_time", 0))
+            end_time = float(request.form.get("end_time", 10))
+            result = external_skills.split_video(video_url, start_time, end_time)
+            result_data["result"] = result
+            result_data["note"] = f"视频裁剪完成: {start_time}s - {end_time}s"
+
+        elif process_type == "subtitles":
+            # 创建草稿并添加视频，然后生成字幕
+            draft_result = external_skills.create_draft(f"{state['title']}_字幕版", 1080, 1920)
+            draft_id = draft_result.get("draft_id", "")
+            if draft_id:
+                external_skills.add_video(draft_id, video_url)
+                subtitles = external_skills.create_subtitles_from_video(draft_id, video_url)
+                result_data["result"] = {"draft_id": draft_id, "draft_url": draft_result.get("draft_url", ""), "subtitles_count": len(subtitles)}
+                result_data["note"] = f"字幕生成完成，共 {len(subtitles)} 条字幕"
+            else:
+                result_data["error"] = "创建草稿失败"
+
+        elif process_type == "voiceover":
+            text = request.form.get("voiceover_text", "").strip()
+            voice_id = request.form.get("voice_id", "")
+            if text:
+                draft_result = external_skills.create_draft(f"{state['title']}_配音版", 1080, 1920)
+                draft_id = draft_result.get("draft_id", "")
+                if draft_id:
+                    vo_result = external_skills.create_voiceover_video(draft_id, text, video_url=video_url, voice_id=voice_id)
+                    result_data["result"] = {"draft_id": draft_id, "draft_url": draft_result.get("draft_url", ""), **vo_result}
+                    result_data["note"] = f"AI 配音完成，音频时长: {vo_result.get('duration', 0):.1f}s"
+                else:
+                    result_data["error"] = "创建草稿失败"
+            else:
+                result_data["error"] = "未提供配音文本"
+
+        elif process_type == "extract_audio":
+            result = external_skills.extract_audio(video_url)
+            result_data["result"] = result
+            result_data["note"] = "音频提取完成"
+
+        # 保存处理记录
+        state.setdefault("vectcut_history", []).append(result_data)
+        state["history"].append({"at": store.now_iso(), "status": "vectcut_processed", "note": result_data.get("note", "VectCut 处理完成")})
+        store.save_state(project_id, state)
+
+        # 保存结果到 production 目录
+        store.write_json(project_id, f"production/vectcut_{process_type}_{store.now_iso().replace(':', '-')}.json", result_data)
+
+    except Exception as e:
+        result_data["error"] = str(e)
+        state.setdefault("vectcut_history", []).append(result_data)
+        state["history"].append({"at": store.now_iso(), "status": "vectcut_error", "note": f"处理失败: {e}"})
+        store.save_state(project_id, state)
+
+    return redirect(url_for("index", project=project_id))
+
+
 @app.post("/projects/<project_id>/run-qa")
 def run_qa(project_id: str):
     try:
